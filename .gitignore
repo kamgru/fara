@@ -1,0 +1,7 @@
+.idea
+bin/
+obj/
+photos/
+*.db
+**/.DS_Store
+*.DotSettings.*

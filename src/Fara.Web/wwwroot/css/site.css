@@ -1,0 +1,38 @@
+body {
+    background-color: #1a1d20;
+    padding: 0;
+    margin: 0;
+}
+.wall {
+    column-gap: 10px;
+    column-count: 1;
+    margin: 0 auto;
+    padding: 20px;
+}
+
+@media (min-width: 640px) {
+    .wall {
+        column-count: 2;
+    }
+}
+
+@media (min-width: 1024px) {
+    .wall {
+        column-count: 3;
+    }
+}
+
+.tile {
+    display: block;
+    width: 100%;
+    margin: 0;
+    padding: 0 0 10px 0;
+    break-inside: avoid; /* prevents splitting */
+    text-decoration: none;
+}
+
+.tile img {
+    width: 100%;
+    height: auto; /* preserves aspect ratio */
+    display: block;
+}

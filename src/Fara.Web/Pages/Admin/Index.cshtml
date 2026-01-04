@@ -1,0 +1,25 @@
+@page
+@model Fara.Web.Pages.Admin.Index
+
+@{
+    Layout = null;
+}
+
+<!DOCTYPE html>
+
+<html lang="en">
+<head>
+    <title>Fara Admin</title>
+</head>
+<body>
+<div>
+    @foreach (PhotoEntry img in Model.Photos)
+    {
+        <div>
+            <img src="@img.Url" loading="lazy" alt=""/>
+            <div>@img.Status</div>
+        </div>
+    }
+</div>
+</body>
+</html>

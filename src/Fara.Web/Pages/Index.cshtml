@@ -1,0 +1,11 @@
+﻿@page
+@model IndexModel
+
+<div class="wall">
+@foreach (PhotoEntry img in Model.Photos)
+{
+    <a href="#" class="tile">
+        <img src="@img.Url" loading="lazy" decoding="async" alt=""/>
+    </a>
+}
+</div>

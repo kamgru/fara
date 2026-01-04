@@ -1,0 +1,30 @@
+@page
+@model Fara.Web.Pages.Admin.Upload
+
+@{
+    Layout = null;
+}
+
+<!DOCTYPE html>
+
+<html lang="en">
+<head>
+    <title>Upload Photo</title>
+</head>
+<body>
+<div>
+    <form method="post" enctype="multipart/form-data">
+        <div>
+            <label>
+                <input type="file" asp-for="Input" accept=".jpg" multiple="multiple"/>
+            </label>
+        </div>
+        <button type="submit">Submit</button>
+    </form>
+</div>
+@if (!string.IsNullOrEmpty(Model.Message))
+{
+    <div>@Model.Message</div>
+}
+</body>
+</html>

@@ -1,12 +1,38 @@
 ﻿@page
-@using Fara.Web.Features.Gallery
 @model IndexModel
 
-<div class="wall">
-@foreach (PhotoListItem img in Model.Photos)
-{
-    <a href="#" class="tile">
-        <img src="@img.Url" loading="lazy" decoding="async" alt=""/>
-    </a>
-}
+<div class="wall" id="wall">
 </div>
+<div id="sentinel"></div>
+
+@section Scripts
+{
+    <script>
+        const observer = new IntersectionObserver(
+            async (entries) => {
+                entries.forEach(entry => {
+                    page += 1;
+                    loadMore();
+                })
+            }, {
+                root: null,
+            })
+
+        const sentinel = document.getElementById('sentinel')
+        observer.observe(sentinel)
+
+        let page = 1;
+
+        @* document.addEventListener('DOMContentLoaded', () => { *@
+        @*     loadMore(); *@
+        @* }) *@
+
+        const loadMore = () =>
+            fetch(`index?handler=photos&p=${page}`)
+                .then(async response => {
+                    const wall = document.getElementById('wall');
+                    const photos = await response.text();
+                    wall.insertAdjacentHTML('beforeend', photos)
+                })
+    </script>
+}

@@ -1,0 +1,8 @@
+@using Fara.Web.Features.Gallery
+
+@foreach (PhotoListItem img in Model)
+{
+    <a href="#" class="tile">
+        <img src="@img.Url" loading="lazy" decoding="async" alt=""/>
+    </a>
+}

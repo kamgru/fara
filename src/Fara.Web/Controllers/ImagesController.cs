@@ -17,4 +17,14 @@ public class ImagesController : ControllerBase
             ? File(result.Stream, result.ContentType)
             : NotFound();
     }
+
+    [HttpGet]
+    [Route("images")]
+    public async Task<IActionResult> ListAsync(
+        int page,
+        [FromServices] IListHandler handler)
+    {
+        IReadOnlyList<PhotoListItem> result = await handler.HandleAsync(page);
+        return Ok(result);
+    }
 }

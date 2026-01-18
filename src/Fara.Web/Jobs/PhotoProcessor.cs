@@ -13,13 +13,16 @@ public class PhotoProcessingQueue
 
 public class PhotoProcessor(
     PhotoProcessingQueue queue,
-    IServiceScopeFactory scopeFactory) : BackgroundService
+    IServiceScopeFactory scopeFactory,
+    ILogger<PhotoProcessor> logger) : BackgroundService
 {
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
         while (!stoppingToken.IsCancellationRequested)
         {
             string photoId = await queue.DequeueAsync();
+            logger.LogInformation("Processing photo {photoId}", photoId);
+
             using IServiceScope scope = scopeFactory.CreateScope();
             IProcessHandler handler = scope.ServiceProvider.GetRequiredService<IProcessHandler>();
             await handler.HandleAsync(photoId);

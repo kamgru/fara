@@ -1,8 +1,9 @@
 ﻿@page
+@using Fara.Web.Features.Gallery
 @model IndexModel
 
 <div class="wall">
-@foreach (PhotoEntry img in Model.Photos)
+@foreach (PhotoListItem img in Model.Photos)
 {
     <a href="#" class="tile">
         <img src="@img.Url" loading="lazy" decoding="async" alt=""/>

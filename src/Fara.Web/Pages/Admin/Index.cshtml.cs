@@ -1,3 +1,4 @@
+using Fara.Web.Common;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.Data.Sqlite;
@@ -21,7 +22,7 @@ public class Index : PageModel
         await con.OpenAsync();
         await using SqliteCommand cmd = con.CreateCommand();
         cmd.CommandText = """
-                            select key, status from photos
+                            select photoId, state from photos
                             limit 25 offset @offset;
                           """;
         cmd.Parameters.AddWithValue("@offset", offset);
@@ -31,8 +32,8 @@ public class Index : PageModel
         while (await reader.ReadAsync())
         {
             string key = reader.GetString(0);
-            string status = reader.GetString(1);
-            PhotoEntry entry = new($"images/{key}_t", status);
+            int status = reader.GetInt32(1);
+            PhotoEntry entry = new($"admin/images/{key}_t", (PublicationState)status, key);
             Photos.Add(entry);
         }
 
@@ -42,4 +43,6 @@ public class Index : PageModel
 
 public record PhotoEntry(
     string Url,
-    string Status);
+    PublicationState Status,
+    string PhotoId);
+

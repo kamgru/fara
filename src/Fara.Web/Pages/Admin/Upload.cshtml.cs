@@ -1,14 +1,12 @@
 using System.ComponentModel.DataAnnotations;
-using System.Text.RegularExpressions;
+using Fara.Web.Features.Admin.Photos;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
-using Microsoft.Data.Sqlite;
 
 namespace Fara.Web.Pages.Admin;
 
 public class Upload(
-    IPhotoStorage photoStorage,
-    PhotoProcessingQueue queue,
+    IUploadHandler uploadHandler,
     ILogger<Upload> logger) : PageModel
 {
     [BindProperty] [Required] public List<IFormFile> Input { get; set; } = [];
@@ -27,18 +25,7 @@ public class Upload(
         {
             try
             {
-                logger.LogInformation($"Uploading {inputFile.FileName}");
-                string key = Guid.NewGuid().ToString("N");
-                await photoStorage.SaveAsync(key, inputFile.OpenReadStream(), "source");
-
-                await using SqliteConnection con = new("Data Source=photos.db");
-                await con.OpenAsync();
-                await using SqliteCommand cmd = con.CreateCommand();
-                cmd.CommandText = "insert into photos (key) values (@key)";
-                cmd.Parameters.AddWithValue("@key", key);
-                await cmd.ExecuteNonQueryAsync();
-
-                await queue.EnqueueAsync(key);
+                await uploadHandler.HandleAsync(inputFile);
             }
             catch (Exception ex)
             {
@@ -47,50 +34,7 @@ public class Upload(
             }
         }
 
-
         Message = "File saved";
         return Page();
-    }
-}
-
-public static partial class FilenameValidator
-{
-    [GeneratedRegex(
-        "^[a-zA-Z0-9]{32}(_[a-z])?$",
-        RegexOptions.IgnoreCase | RegexOptions.CultureInvariant
-    )]
-    private static partial Regex SafeJpegFileNameRegex();
-
-    public static bool IsValidFilename(string filename)
-    {
-        return SafeJpegFileNameRegex().IsMatch(filename);
-    }
-}
-
-public interface IPhotoStorage
-{
-    Task SaveAsync(string key, Stream inputStream, string target);
-}
-
-public class PhotoStorage(IWebHostEnvironment env) : IPhotoStorage, IScoped
-{
-    public async Task SaveAsync(string key, Stream inputStream, string target = "")
-    {
-        if (!FilenameValidator.IsValidFilename(key))
-        {
-            throw new InvalidOperationException("Key contains invalid characters");
-        }
-
-        //TODO: check first bytes to see if really jpg
-
-        string root = Path.GetFullPath(Path.Combine(env.ContentRootPath, "photos", target));
-        Directory.CreateDirectory(root);
-
-        string tmp = Path.Combine(root, Path.GetTempFileName());
-        await using FileStream fs = File.Create(tmp);
-        await inputStream.CopyToAsync(fs);
-
-        string actual = Path.Combine(root, $"{key}.jpg");
-        File.Move(tmp, actual);
     }
 }

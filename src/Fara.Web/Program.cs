@@ -1,7 +1,6 @@
-using System.Threading.Channels;
-using Microsoft.Data.Sqlite;
-using SixLabors.ImageSharp;
-using SixLabors.ImageSharp.Processing;
+using Fara.Web.DataAccess;
+using Fara.Web.Features.Admin.Photos;
+using Fara.Web.Jobs;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -13,8 +12,11 @@ builder.Services.Scan(scan =>
         .AsImplementedInterfaces()
         .WithScopedLifetime());
 
-builder.Services.AddSingleton<PhotoProcessingQueue>();
+PhotoProcessingQueue queue = new();
+builder.Services.AddSingleton(queue);
 builder.Services.AddHostedService<PhotoProcessor>();
+builder.Services.AddScoped<ISqlCommandExecutor>(_ => new SqlCommandExecutor("data source=photos.db"));
+builder.Services.AddScoped<ISqlQueryRunner>(_ => new SqlQueryRunner("data source=photos.db"));
 
 if (builder.Environment.IsDevelopment())
 {
@@ -29,21 +31,27 @@ if (builder.Environment.IsDevelopment())
     });
 }
 
-var app = builder.Build();
-
+WebApplication app = builder.Build();
 {
-    using var con = new SqliteConnection("Data Source=photos.db");
-    con.Open();
-    SqliteCommand cmd = con.CreateCommand();
-    cmd.CommandText = """
+    string sql = """
                       create table if not exists photos (
                           id integer not null  primary key autoincrement,
-                          key text not null,
-                          status text not null default('processing'),
+                          photoId text not null,
+                          state integer not null default(0),
                           created_at text not null default(CURRENT_TIMESTAMP)
                           );
                       """;
-    cmd.ExecuteNonQuery();
+    ISqlCommandExecutor command = new SqlCommandExecutor("data source=photos.db");
+    await command.ExecuteAsync(sql);
+
+    ISqlQueryRunner sqlQueryRunner = new SqlQueryRunner("data source=photos.db");
+    IReadOnlyList<string> photoIds = await sqlQueryRunner.QueryAsync<string>(
+        "select photoId from photos where state = 0;",
+        reader => reader.GetString(0));
+    foreach (string photoId in photoIds)
+    {
+        await queue.EnqueueAsync(photoId);
+    }
 }
 
 // Configure the HTTP request pipeline.
@@ -71,55 +79,3 @@ app.Run();
 
 internal interface IScoped;
 
-public class PhotoProcessingQueue
-{
-    private readonly Channel<string> chan =  Channel.CreateUnbounded<string>();
-
-    public async Task EnqueueAsync(string key) => await chan.Writer.WriteAsync(key);
-    public async Task<string> DequeueAsync() => await chan.Reader.ReadAsync();
-}
-
-public class PhotoProcessor(
-    PhotoProcessingQueue queue,
-    IWebHostEnvironment env) : BackgroundService
-{
-    protected override async Task ExecuteAsync(CancellationToken stoppingToken)
-    {
-        while (!stoppingToken.IsCancellationRequested)
-        {
-            string key = await queue.DequeueAsync();
-            string root = Path.GetFullPath(Path.Combine(env.ContentRootPath, "photos", "source"));
-            string filename = Path.GetFullPath(Path.Combine(root, $"{key}.jpg"));
-
-            Image img = await Image.LoadAsync(filename, stoppingToken);
-
-            img.Mutate(x => x.Resize(
-                new ResizeOptions
-                {
-                    Mode = ResizeMode.Max,
-                    Size = new Size(1024, 1024)
-                }));
-            string target = Path.GetFullPath(Path.Combine(env.ContentRootPath, "photos"));
-            await img.SaveAsJpegAsync(Path.Combine(target, $"{key}_n.jpg"), stoppingToken);
-
-            img.Mutate(x => x.Resize(new ResizeOptions
-            {
-                Mode = ResizeMode.Max,
-                Size = new Size(300, 300)
-            }));
-            string thumb = Path.GetFullPath(Path.Combine(env.ContentRootPath, "photos"));
-            await img.SaveAsJpegAsync(Path.Combine(thumb, $"{key}_t.jpg"), stoppingToken);
-
-            await using SqliteConnection con = new("Data Source=photos.db");
-            await con.OpenAsync(stoppingToken);
-            await using SqliteCommand cmd = con.CreateCommand();
-            cmd.CommandText = """
-                                update photos
-                                set status = 'ready'
-                                where key = @key;
-                              """;
-            cmd.Parameters.AddWithValue("@key", key);
-            await cmd.ExecuteNonQueryAsync(stoppingToken);
-        }
-    }
-}

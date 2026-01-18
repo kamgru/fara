@@ -1,4 +1,5 @@
 @page
+@using Fara.Web.Common
 @model Fara.Web.Pages.Admin.Index
 
 @{
@@ -12,14 +13,33 @@
     <title>Fara Admin</title>
 </head>
 <body>
+<style>
+    .row {
+        display: flex;
+    }
+</style>
 <div>
     @foreach (PhotoEntry img in Model.Photos)
     {
-        <div>
+        <div class="row">
             <img src="@img.Url" loading="lazy" alt=""/>
             <div>@img.Status</div>
+            @if (img.Status == PublicationState.Ready)
+            {
+                <button class="btn-publish" data-photo-id="@img.PhotoId" type="button">Publish</button>
+            }
         </div>
     }
 </div>
+<script>
+    const publishButtons = document.querySelectorAll('.btn-publish');
+    publishButtons.forEach(publishButton => {
+        publishButton.addEventListener('click', ev => {
+            const photoId = ev.target.getAttribute('data-photo-id');
+            fetch(`/admin/photos/publish/${photoId}`, { method: 'POST' })
+                .then(x => console.log(x))
+        })
+    })
+</script>
 </body>
 </html>
